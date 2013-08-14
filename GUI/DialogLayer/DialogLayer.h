@@ -97,14 +97,44 @@ public:
     virtual void ccTouchCancelled(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEvent);
 
 
+	/**
+	* @brief 设置可视区域，当设置此值后，点击此区域外会移除当前Dialog，调用endDialog函数
+	*        需要注意的是，如果使用addBoardChildWithAction添加主面板，会同步设置该主面板
+	*        为可视面板，但是如果不希望点击周边关闭对话框，则可以调用此函数，传入NULL值
+	* @param pNode 可视节点，要求至少为CCSprite，因为要得到ContentSize来确定可视区域
+	*/
 	void SetVisibleBoard(cocos2d::CCNode* pNode);
 
-	// 结束对话框
-	bool endDialog(cocos2d::CCAction* pAction = NULL, float fDuration = 1.0f);
+	/**
+	* @brief 在结束动画之前，把面板的颜色置为透明
+	*/
+	void SetBackgroundColorOffBeforeEndDialogAction(bool bOff);
+
+	/**
+	* @brief 结束对话框函数，如果设置了出场动画，则播放后结束，如果设置了动画结束回调则会调用对应的回调函数
+	* @param pAction 如果提供此参数，则修改出场动画效果，否则默认使用addBoardChildWithAction设定时的pOnExitAction动画
+	* @param pDuration 表示动画时间，暂时不使用
+	* @return true 默认返回成功
+	*/
+	bool endDialog(cocos2d::CCActionInterval* pAction = NULL, float fDuration = 1.0f);
+	
+	/**
+	* @brief 添加整体对话框，附加开始和结束动画
+	* @param pChildNode 设为主面板的节点，默认也设置为可视面板，如果主面板只是负责移动的CCNode容器，则需要指定可视面板。@see SetVisibleBoard
+	* @param pOnEnterAction 进场时主面板的动作，可以为NULL
+	* @param pOnExitAction 移除Dialog时的动作，可以为NULL
+	* @param pAfterExitActionCallbackFuncN 移除Dialog动作播放结束后的回调函数（可以外部得到一个操作的机会），可以为空
+	* @return true 默认返回成功
+	*/
+	bool addBoardChildWithAction(cocos2d::CCNode* pChildNode, cocos2d::CCActionInterval* pOnEnterAction = NULL, cocos2d::CCActionInterval* pOnExitAction = NULL, cocos2d::CCCallFuncN* pAfterExitActionCallbackFuncN = NULL);
+
 
 private:
     /** 初始化菜单 将菜单添加到模态对话框上*/
     bool initMenu();
+
+	// 移除DialogLayer
+	void ActionCallbackRemoveLayer();
 
 protected:            // 模态对话框菜单
     cocos2d::CCArray *mMenuItemArray;   // 所有菜单
@@ -135,7 +165,22 @@ protected:            // 模态对话框菜单
 	std::vector<cocos2d::CCLayer*> m_vOtherCtlArray;
 
 	// 整体显示面板，所有的按钮控件都在这层面板区域内，用来判断是否点击到空白区域作为退出的凭证
-	CCNode* m_pVisibleNode;
+	cocos2d::CCNode* m_pVisibleNode;
+
+	// 整体面板，要求只能有一个根面板存在，它控制整个对话框的动作
+	cocos2d::CCNode* m_pMainBoard;
+
+	// 整体面板进场动画
+	cocos2d::CCActionInterval* m_pBoardOnEnterAction;
+
+	// 整体面板出场动画
+	cocos2d::CCActionInterval* m_pBoardOnExitAction;
+
+	// 对应点击到退出区域的响应，需要由外部控制调用移除当前Dialog
+	cocos2d::CCCallFuncN* m_pCallFuncN;
+
+	// 在结束动画之前把背景默认颜色移除为透明
+	bool m_bOffBackgoundColorBeforeEndDialogAction;
 };
 
 #endif

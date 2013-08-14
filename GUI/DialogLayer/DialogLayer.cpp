@@ -7,13 +7,18 @@ USING_NS_CC_EXT;
 DialogLayer::DialogLayer():
     // m_pDefaultMenu(NULL),
 	//    mTouchedMenu(false),
+	m_bOffBackgoundColorBeforeEndDialogAction(false),
 	m_pCurrentTouchMenu(NULL),
 	m_pCurrentTouchEditBox(NULL),
 	m_pCurrentTouchScrollView(NULL),
 	m_pVisibleNode(NULL),
     mMenuItemArray(NULL),
 	m_pOtherTouchCtl(NULL),
-	m_nTouchCount(0)
+	m_nTouchCount(0),
+	m_pBoardOnEnterAction(NULL),
+	m_pBoardOnExitAction(NULL),
+	m_pCallFuncN(NULL),
+	m_pMainBoard(NULL)
 {
 }
 
@@ -57,6 +62,13 @@ void DialogLayer::onEnter()
 {
     CCLayerColor::onEnter();
     CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this, kCCMenuHandlerPriority - 1, true);
+
+	// 播放进场动画
+	if (m_pMainBoard && m_pBoardOnExitAction)
+	{
+		m_pMainBoard->stopAllActions();
+		m_pMainBoard->runAction(m_pBoardOnEnterAction);
+	}
 }
 
 void DialogLayer::onExit()
@@ -119,13 +131,18 @@ bool DialogLayer::ccTouchBegan(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEven
 	}
 
 	// 判断是否点击在显示面板之外的区域
-	if (m_pVisibleNode)
+//	if (m_pVisibleNode)
+	if (m_pMainBoard)
 	{
 		CCPoint touchLocation = pTouch->getLocation();
 		CCPoint local = m_pVisibleNode->convertToNodeSpace(touchLocation);
+		// CCPoint local = m_pMainBoard->convertToNodeSpace(touchLocation);
 
 		CCPoint nodePostion = m_pVisibleNode->getPosition();
+		// CCPoint nodePostion = m_pMainBoard->getPosition();
+
 		CCSize nodeContentSize = m_pVisibleNode->getContentSize();
+		// CCSize nodeContentSize = m_pMainBoard->getContentSize();
 
 		CCRect r = CCRectMake( nodePostion.x - nodeContentSize.width * m_obAnchorPoint.x,
 			nodePostion.y - nodeContentSize.height * m_obAnchorPoint.y,
@@ -272,10 +289,37 @@ void DialogLayer::pushEditBox( cocos2d::extension::CCEditBox* pEditBox )
 	}
 }
 
-bool DialogLayer::endDialog(cocos2d::CCAction* pAction /*= NULL*/, float fDuration /*= 1.0f*/)
+/*
+*	如果需要播放结束动画，请使用addBoardChildWithAction函数来设定对应的动画对象和动作
+*/
+bool DialogLayer::endDialog(cocos2d::CCActionInterval* pAction /*= NULL*/, float fDuration /*= 1.0f*/)
 {
-	// 如果有动画则执行动画没有则直接删除，这个由子类实现
-	removeFromParentAndCleanup(true);
+	if (pAction)
+	{
+		m_pBoardOnExitAction = pAction;
+	}
+
+	if (m_pBoardOnExitAction && m_pMainBoard)
+	{
+		if (m_bOffBackgoundColorBeforeEndDialogAction)
+		{
+			setOpacity(0);
+		}
+		if (m_pCallFuncN)
+		{
+			m_pMainBoard->runAction(CCSequence::create(m_pBoardOnExitAction, m_pCallFuncN, CCCallFunc::create(this, callfunc_selector(DialogLayer::ActionCallbackRemoveLayer)), NULL));
+		}
+		else
+		{
+			// 默认动画播放后移除DialogLayer
+			m_pMainBoard->runAction(CCSequence::create(m_pBoardOnExitAction, CCCallFunc::create(this, callfunc_selector(DialogLayer::ActionCallbackRemoveLayer)), NULL));
+		}
+	}
+	else
+	{
+		// 如果有动画则执行动画没有则直接删除，这个也可以由子类实现
+		removeFromParentAndCleanup(true);
+	}
 	return true;
 }
 
@@ -445,4 +489,37 @@ bool DialogLayer::popOtherTouchedCtrlByTag( int nTag )
 	}
 
 	return false;
+}
+
+bool DialogLayer::addBoardChildWithAction( cocos2d::CCNode* pChildNode, 
+	cocos2d::CCActionInterval* pOnEnterAction /*= NULL*/,
+	cocos2d::CCActionInterval* pOnExitAction /*= NULL*/, 
+	cocos2d::CCCallFuncN* pAfterExitActionCallbackFuncN /*= NULL*/ )
+{
+	if (pChildNode)
+	{
+		m_pMainBoard = pChildNode;
+		// 默认当前主面板即为可视面板
+		m_pVisibleNode = m_pMainBoard;
+		addChild(pChildNode);
+	}
+
+	m_pCallFuncN = pAfterExitActionCallbackFuncN;
+	m_pCallFuncN->retain();
+	m_pBoardOnEnterAction = pOnEnterAction;
+	m_pBoardOnEnterAction->retain();
+	m_pBoardOnExitAction = pOnExitAction;
+	m_pBoardOnExitAction->retain();
+
+	return true;
+}
+
+void DialogLayer::ActionCallbackRemoveLayer()
+{
+	removeFromParentAndCleanup(true);
+}
+
+void DialogLayer::SetBackgroundColorOffBeforeEndDialogAction( bool bOff )
+{
+	m_bOffBackgoundColorBeforeEndDialogAction = bOff;
 }
