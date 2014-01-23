@@ -8,41 +8,16 @@
 #include "cocos2d.h"
 #include "cocos-ext.h"
 
-#define REPLACE_AUTORELEASE_OBJ(M_OBJ, OBJ) \
-	if (OBJ) {CC_SAFE_RELEASE_NULL(M_OBJ); M_OBJ = OBJ; CC_SAFE_RETAIN(M_OBJ);}
-
-// set property and get property in simply way
-#define CC_PROPERTY_METHOD(TYPE, PROP, METHOD) \
-protected: TYPE m_p##PROP;\
-public: virtual void set##METHOD(TYPE p##PROP) {REPLACE_AUTORELEASE_OBJ(m_p##PROP, p##PROP);}\
-public: virtual TYPE get##METHOD() {return m_p##PROP;}
-
-// add the node to container in CCSrollView
-#define CONTAINER_ADD_CHILD(NODE) \
-	if (NODE) \
-	{\
-		if (NODE->getParent()) \
-		{\
-			NODE->removeFromParent();\
-		}\
-		NODE->setAnchorPoint(cocos2d::CCPointZero);\
-		NODE->setContentSize(cocos2d::CCSizeMake(getContentSize().width, NODE->getContentSize().height));\
-		getContainer()->addChild(NODE);\
-	}
-
-#define CC_PROPERTY_METHOD_ADD_TO_CONTAINER(TYPE, PROP, METHOD)\
-protected: TYPE m_p##PROP;\
-protected: virtual void updatePosition##METHOD();\
-public: virtual void set##METHOD(TYPE p##PROP) {REPLACE_AUTORELEASE_OBJ(m_p##PROP, p##PROP); CONTAINER_ADD_CHILD(m_p##PROP); updatePosition##METHOD();}\
-public: virtual TYPE get##METHOD() {return m_p##PROP;}
+#define CC_GETTER_AND_SETTER(varType, memberName, funcName) \
+protected: varType memberName;\
+public: inline virtual void set##funcName(varType val){memberName = val;}\
+public: inline virtual varType get##funcName(){return memberName;}
 
 // status
 enum {
 	kCCPull2RefreshStatusNormal,
-	kCCPull2RefreshStatusPullDownReleaseToRefresh,	// 
-	kCCPull2RefreshStatusPullUpReleaseToRefresh,
-	kCCPull2RefreshStatusPullDown,
-	kCCPull2RefreshStatusPullUp
+	kCCPull2RefreshStatusPullDownReleaseToRefresh,
+	kCCPull2RefreshStatusPullUpReleaseToRefresh
 };
 
 // pull type whitch means uesr trigger a pull up or pull down release
@@ -62,19 +37,42 @@ public:
 
 	/**
 	* @brief when data returned, call this function to update the view
+	* @param table
 	*/
 	virtual void onPullDownRefreshComplete(Pull2RefreshTableView* table);
 	virtual void onPullUpRefreshComplete(Pull2RefreshTableView* table);
+
+	/**
+	 * @brief trigger when pull down. 
+	 * you should update the header loading sprite status(posistion, rotation etc.)
+	 * it will be called freqently, do not make a long time operation here
+	 * @param table
+	 * @param fDistanceNow
+	 * @param fDistanceStandard
+	 */
+	virtual void onPullDownDidScroll(Pull2RefreshTableView* table, float fDistanceNow, float fDistanceStandard) = 0;
+
+	/**
+	 * @brief trigger when pull up.
+	 * you should update the footer loading sprite status(posistion, rotation etc.)
+	 * it will be called freqently, do not make a long time operation here
+	 * @param table
+	 * @param fDistanceNow
+	 * @param fDistanceStandard
+	 */
+	virtual void onPullUpDidScroll(Pull2RefreshTableView* table, float fDistanceNow, float fDistanceStandard) = 0;
 };
 
 class Pull2RefreshTableView : public cocos2d::extension::CCTableView
 {
-	// Node header
-	// CC_PROPERTY_METHOD_ADD_TO_CONTAINER(cocos2d::CCNode*, NodeHeader, HeaderNode);
-	// Node footer
-	// CC_PROPERTY_METHOD_ADD_TO_CONTAINER(cocos2d::CCNode*, NodeFooter, FooterNode);
-	// CC_PROPERTY_METHOD(cocos2d::CCActionInterval*, ActionHeader, HeaderAction);
-	// CC_PROPERTY_METHOD(cocos2d::CCActionInterval*, ActionFooter, FooterAction);
+	// distance add to pull action.
+	// pull action must make a distance large than offset
+	// ZERO in default
+	CC_GETTER_AND_SETTER(float, m_fPullDownOffsetDistance, PullDownOffsetDistance);
+	CC_GETTER_AND_SETTER(float, m_fPullUpOffsetDistance, PullUpOffsetDistance);
+	CC_GETTER_AND_SETTER(float, m_fPullDownDistance, PullDownDistance);
+	CC_GETTER_AND_SETTER(float, m_fPullUpDistance, PullUpDistance);
+
 public:
 	Pull2RefreshTableView();
 	~Pull2RefreshTableView();
@@ -95,23 +93,6 @@ public:
 		cocos2d::CCNode* pNodeFooter = NULL);
 
 	/**
-	* @brief create with a loading animation node
-	* @param pDataSource like CCTableView's param
-	* @param size the view size
-	* @param pContainer the container of cells
-	* @parem pNodeHeader when drop down the list, it show loading status
-	*                    this node only need supply height, width will be setted auto
-	* @param pNodeFooter when pull up the list, it show loading status
-	*/
-	static Pull2RefreshTableView* create(cocos2d::extension::CCTableViewDataSource* pDataSource,
-		cocos2d::CCSize size,
-		cocos2d::CCNode* pContainer,
-		cocos2d::CCNode* pNodeHeader,
-		cocos2d::CCNode* pNodeFooter,
-		cocos2d::CCActionInterval* pActionHeader,
-		cocos2d::CCActionInterval* pActionFooter);
-
-	/**
 	* @brief set and get Delegate override the base class
 	*/
 	void setDelegate(Pull2RefreshTableViewDelegate* pDelegate);
@@ -122,33 +103,13 @@ public:
 	*/
 	void _updateContentSize();
 
-	// if you want to add other operation than do only reload data when data returned
+	// if you want to add another operation than do only reload data when data returned
 	// you should override this method
 	virtual void onPullDownRefreshComplete();
 	virtual void onPullUpRefreshComplete();
 
 	// override this method to implement loading animation
 	virtual void scrollViewDidScroll(cocos2d::extension::CCScrollView* view);
-
-	void setPullDownDistance(float fDistance)
-	{
-		m_fPullDownDistance = fDistance;
-	}
-	
-	float getPullDownDistance()
-	{
-		return m_fPullDownDistance;
-	}
-
-	void setPullUpDistance(float fDistance)
-	{
-		m_fPullUpDistance = fDistance;
-	}
-
-	float getPullUpDistance()
-	{
-		return m_fPullUpDistance;
-	}
 
 	/**
 	 * @brief update the header area's content size and header node position
@@ -220,15 +181,11 @@ protected:
 	virtual void addFooterArea();
 
 	/**
-	 * @brief 
+	 * @brief get the distance of pull action, you can override it 
 	 */
 	virtual float getPullDistance();
 
 protected:
-	// release distance to judge whether is trigger refresh call
-	float m_fPullDownDistance;
-	float m_fPullUpDistance;
-
 	// enum status	
 	int m_nPullStatus;
 

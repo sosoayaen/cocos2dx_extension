@@ -16,12 +16,12 @@ void Pull2RefreshTableViewDelegate::onPullUpRefreshComplete(Pull2RefreshTableVie
 Pull2RefreshTableView::Pull2RefreshTableView():
 m_pNodeFooter(NULL)
 ,m_pNodeHeader(NULL)
-,m_pActionHeader(NULL)
-,m_pActionFooter(NULL)
 ,m_fPullDownDistance(10000.0f)
 ,m_fPullUpDistance(10000.0f)
 ,m_nPullStatus(kCCPull2RefreshStatusNormal)
-,m_nPullType(kCCPull2RefreshTypeNone)
+,m_nPullType(kCCPull2RefreshTypeDown)
+,m_fPullDownOffsetDistance(0.0f)
+,m_fPullUpOffsetDistance(0.0f)
 {
 	m_pHeader = CCNode::create();
 	CC_SAFE_RETAIN(m_pHeader);
@@ -47,17 +47,6 @@ Pull2RefreshTableView* Pull2RefreshTableView::create( CCTableViewDataSource* pDa
 		cocos2d::CCNode* pNodeHeader /*= NULL*/,
 		cocos2d::CCNode* pNodeFooter /*= NULL*/)
 {
-	return Pull2RefreshTableView::create(pDataSource, size, pContainer, pNodeHeader, pNodeFooter, NULL, NULL);
-}
-
-Pull2RefreshTableView* Pull2RefreshTableView::create( CCTableViewDataSource* pDataSource,
-		cocos2d::CCSize size,
-		cocos2d::CCNode* pContainer,
-		cocos2d::CCNode* pNodeHeader,
-		cocos2d::CCNode* pNodeFooter,
-		cocos2d::CCActionInterval* pActionHeader,
-		cocos2d::CCActionInterval* pActionFooter )
-{
 	Pull2RefreshTableView* pRet = new Pull2RefreshTableView();
 	if (pRet && pRet->initWithViewSize(size, pContainer))
 	{
@@ -75,8 +64,6 @@ Pull2RefreshTableView* Pull2RefreshTableView::create( CCTableViewDataSource* pDa
 		}
 		pRet->setFooterNode(pNodeFooter);
 		if (pNodeFooter) pRet->setPullUpDistance(pNodeFooter->getContentSize().height);
-		pRet->setHeaderAction(pActionHeader);
-		pRet->setFooterAction(pActionFooter);
 		pRet->autorelease();
 	}
 	else
@@ -90,13 +77,15 @@ Pull2RefreshTableView* Pull2RefreshTableView::create( CCTableViewDataSource* pDa
 void Pull2RefreshTableView::onPullDownRefresh()
 {
 	Pull2RefreshTableViewDelegate* pDelegate = getDelegate();
-	pDelegate->onPullDownRefresh(this);
+	if (pDelegate)
+		pDelegate->onPullDownRefresh(this);
 }
 
 void Pull2RefreshTableView::onPullUpRefresh()
 {
 	Pull2RefreshTableViewDelegate* pDelegate = getDelegate();
-	pDelegate->onPullUpRefresh(this);
+	if (pDelegate)
+		pDelegate->onPullUpRefresh(this);
 }
 
 void Pull2RefreshTableView::setDelegate( Pull2RefreshTableViewDelegate* pDelegate )
@@ -263,16 +252,26 @@ void Pull2RefreshTableView::updateFooterArea()
 
 float Pull2RefreshTableView::getPullDistance()
 {
-	CCPoint offset = getContentOffset();
+	const CCPoint offset = getContentOffset();
+	const CCSize tSize = getContainer()->getContentSize();
+	const CCSize vSize = getViewSize();
 	float fDistance = 0.0f;
 
 	switch (m_nPullType)
 	{
 		case kCCPull2RefreshTypeDown:
-			fDistance = fabs(offset.y + getContainer()->getContentSize().height - getViewSize().height);
+			// if offset.y is less than container.height - view.height
+			// means pull down header
+			if (offset.y < vSize.height - tSize.height)
+				fDistance = fabs(offset.y + tSize.height - vSize.height) - m_fPullDownOffsetDistance;
+		   		fDistance = (fDistance < 0) ? 0 : fDistance;
 			break;
 		case kCCPull2RefreshTypeUp:
-			// TODO: count pull up distance
+			// if offset.y large than 0, it means pull up footer
+			if (offset.y > 0)
+				fDistance = offset.y - m_fPullUpOffsetDistance;
+			break;
+		default:
 			break;
 	}
 
@@ -281,40 +280,35 @@ float Pull2RefreshTableView::getPullDistance()
 
 void Pull2RefreshTableView::scrollViewDidScroll(CCScrollView* view)
 {
-	float degree = 180.0f;
 	// judge offset to trigger refresh
 	float fDis = getPullDistance();
+	Pull2RefreshTableViewDelegate* pDelegate = getDelegate();
 
 	switch(m_nPullType)
 	{
 		case kCCPull2RefreshTypeDown:
-			if (fDis > m_fPullDownDistance)
+			if (m_nPullStatus == kCCPull2RefreshStatusPullDownReleaseToRefresh)
 			{
-				if (m_nPullStatus == kCCPull2RefreshStatusPullDownReleaseToRefresh)
-				{
-					// reset stauts
-					m_nPullStatus = kCCPull2RefreshStatusNormal;
-					this->onPullDownRefresh();
-				}
+				// reset stauts
+				m_nPullStatus = kCCPull2RefreshStatusNormal;
+				this->onPullDownRefresh();
 			}
-			else
+			if (pDelegate)
 			{
-				degree = 180*fDis/m_fPullDownDistance;
-			}
-			
-			CCLOG("degree:%0.2f, fDis::%0.2f, dis:%0.2f", degree, fDis, m_fPullDownDistance);
-			if (m_pNodeHeader)
-			{
-				CCNode* loadNode = (CCNode*)m_pNodeHeader->getChildren()->lastObject();
-				if (loadNode)
-				{
-					loadNode->setRotation(degree);
-				}
+				pDelegate->onPullDownDidScroll(this, fDis, m_fPullDownDistance);
 			}
 			break;
 		case kCCPull2RefreshTypeUp:
-			// TODO: handle Pull Up Refresh
-			// this->onPullUpRefresh();
+			if (m_nPullStatus == kCCPull2RefreshStatusPullUpReleaseToRefresh)
+			{
+				// reset status
+				m_nPullStatus = kCCPull2RefreshStatusNormal;
+				this->onPullUpRefresh();
+			}
+			if (pDelegate)
+			{
+				pDelegate->onPullUpDidScroll(this, fDis, m_fPullUpOffsetDistance);
+			}
 			break;
 	}
 
@@ -335,7 +329,7 @@ void Pull2RefreshTableView::setContainer(CCNode* pContainer)
 	CCScrollView::setContainer(pContainer);
 	// add HEADER AREA
 	addHeaderArea();
-	// TODO: add FOOTER AREA
+	// add FOOTER AREA
 	addFooterArea();
 }
 
@@ -414,7 +408,7 @@ bool Pull2RefreshTableView::ccTouchBegan(CCTouch *pTouch, CCEvent *pEvent)
 	if (bRet)
 	{
 		m_pointPullStart = getContainer()->convertToNodeSpace(pTouch->getLocation());
-		CCLOG("m_pointPullStart (%0.2f, %0.2f)", m_pointPullStart.x, m_pointPullStart.y);
+		// CCLOG("m_pointPullStart (%0.2f, %0.2f)", m_pointPullStart.x, m_pointPullStart.y);
 	}
 	return bRet;
 }
