@@ -32,6 +32,9 @@ class Pull2RefreshTableView;
 class Pull2RefreshTableViewDelegate : public cocos2d::extension::CCTableViewDelegate
 {
 public:
+	/**
+	 * @brief trigger refresh operation when pull distance large than threshold
+	 */
 	virtual void onPullDownRefresh(Pull2RefreshTableView* table) = 0;
 	virtual void onPullUpRefresh(Pull2RefreshTableView* table) = 0;
 
@@ -47,31 +50,36 @@ public:
 	 * you should update the header loading sprite status(posistion, rotation etc.)
 	 * it will be called freqently, do not make a long time operation here
 	 * @param table
-	 * @param fDistanceNow
-	 * @param fDistanceStandard
+	 * @param fDistance
+	 * @param fThreshold
 	 */
-	virtual void onPullDownDidScroll(Pull2RefreshTableView* table, float fDistanceNow, float fDistanceStandard) = 0;
+	virtual void onPullDownDidScroll(Pull2RefreshTableView* table, float fDistance, float fThreshold) = 0;
 
 	/**
 	 * @brief trigger when pull up.
 	 * you should update the footer loading sprite status(posistion, rotation etc.)
 	 * it will be called freqently, do not make a long time operation here
 	 * @param table
-	 * @param fDistanceNow
-	 * @param fDistanceStandard
+	 * @param fDistance
+	 * @param fThreshold
 	 */
-	virtual void onPullUpDidScroll(Pull2RefreshTableView* table, float fDistanceNow, float fDistanceStandard) = 0;
+	virtual void onPullUpDidScroll(Pull2RefreshTableView* table, float fDistance, float fThreshold) = 0;
 };
 
 class Pull2RefreshTableView : public cocos2d::extension::CCTableView
 {
-	// distance add to pull action.
-	// pull action must make a distance large than offset
-	// ZERO in default
-	CC_GETTER_AND_SETTER(float, m_fPullDownOffsetDistance, PullDownOffsetDistance);
-	CC_GETTER_AND_SETTER(float, m_fPullUpOffsetDistance, PullUpOffsetDistance);
-	CC_GETTER_AND_SETTER(float, m_fPullDownDistance, PullDownDistance);
-	CC_GETTER_AND_SETTER(float, m_fPullUpDistance, PullUpDistance);
+	/** 
+	 * ZERO in default. these two variables indicated the onPullDownDidScroll and onPullUpDidScroll
+	 * will not be triggered unless pull distance is beyond the offset threshold
+	 */
+	CC_GETTER_AND_SETTER(float, m_fPullDownOffsetThreshold, PullDownOffsetThreshold);
+	CC_GETTER_AND_SETTER(float, m_fPullUpOffsetThreshold, PullUpOffsetThreshold);
+	
+	/** 
+	 * these two variables indicated when onPullDownRefresh and onPullUpRefresh be triggerd
+	 */
+	CC_GETTER_AND_SETTER(float, m_fPullDownThreshold, PullDownThreshold);
+	CC_GETTER_AND_SETTER(float, m_fPullUpThreshold, PullUpThreshold);
 
 public:
 	Pull2RefreshTableView();
@@ -187,7 +195,7 @@ protected:
 
 protected:
 	// enum status	
-	int m_nPullStatus;
+	int m_nPullActionStatus;
 
 	// ccTouchBegan record the point
 	cocos2d::CCPoint m_pointPullStart;
