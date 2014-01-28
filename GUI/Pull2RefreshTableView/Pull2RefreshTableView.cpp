@@ -71,15 +71,31 @@ Pull2RefreshTableView* Pull2RefreshTableView::create( CCTableViewDataSource* pDa
 void Pull2RefreshTableView::onPullDownRefresh()
 {
 	Pull2RefreshTableViewDelegate* pDelegate = getDelegate();
-	if (pDelegate)
-		pDelegate->onPullDownRefresh(this);
+	if (pDelegate && pDelegate->onPullDownRefresh(this))
+	{
+		if (m_pHeader)
+		{
+			// set header node show in offset
+			// CCLOG("view.height=%0.2f, container.height=%0.2f, header.height=%0.2f, offset.y=%0.2f", getViewSize().height, getContentSize().height, m_pHeader->getContentSize().height, getContentOffset().y);
+			stopScrollAnimation();
+			CCPoint offset = ccp(0, getViewSize().height - getContentSize().height - m_pHeader->getContentSize().height);
+			this->setContentOffsetInDuration(offset, 0.2f);
+		}
+	}
 }
 
 void Pull2RefreshTableView::onPullUpRefresh()
 {
 	Pull2RefreshTableViewDelegate* pDelegate = getDelegate();
-	if (pDelegate)
-		pDelegate->onPullUpRefresh(this);
+	if (pDelegate && pDelegate->onPullUpRefresh(this))
+	{
+		if (m_pFooter)
+		{
+			stopScrollAnimation();
+			CCPoint offset = ccp(0, m_pFooter->getContentSize().height);
+			this->setContentOffsetInDuration(offset, 0.2f);
+		}
+	}
 }
 
 void Pull2RefreshTableView::setDelegate( Pull2RefreshTableViewDelegate* pDelegate )
@@ -285,7 +301,6 @@ void Pull2RefreshTableView::scrollViewDidScroll(CCScrollView* view)
 			{
 				// reset stauts
 				m_nPullActionStatus = kCCPull2RefreshStatusNormal;
-				this->onPullDownRefresh();
 			}
 			if (pDelegate)
 			{
@@ -297,7 +312,6 @@ void Pull2RefreshTableView::scrollViewDidScroll(CCScrollView* view)
 			{
 				// reset status
 				m_nPullActionStatus = kCCPull2RefreshStatusNormal;
-				this->onPullUpRefresh();
 			}
 			if (pDelegate)
 			{
@@ -380,12 +394,14 @@ void Pull2RefreshTableView::ccTouchEnded(CCTouch *pTouch, CCEvent *pEvent)
 			if (fDistance > m_fPullUpThreshold)
 			{
 				m_nPullActionStatus = kCCPull2RefreshStatusPullUpReleaseToRefresh;
+				this->onPullUpRefresh();
 			}
 			break;
 		case kCCPull2RefreshTypeDown:
 			if (fDistance > m_fPullDownThreshold)
 			{
 				m_nPullActionStatus = kCCPull2RefreshStatusPullDownReleaseToRefresh;
+				this->onPullDownRefresh();
 			}
 			break;
 		default:

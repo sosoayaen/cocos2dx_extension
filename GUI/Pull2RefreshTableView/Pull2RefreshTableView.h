@@ -33,10 +33,11 @@ class Pull2RefreshTableViewDelegate : public cocos2d::extension::CCTableViewDele
 {
 public:
 	/**
-	 * @brief trigger refresh operation when pull distance large than threshold
+	 * @brief trigger refresh data action
+	 * @return bool return true if there is a refresh operation, false means no refresh. it's return true in default
 	 */
-	virtual void onPullDownRefresh(Pull2RefreshTableView* table) = 0;
-	virtual void onPullUpRefresh(Pull2RefreshTableView* table) = 0;
+	virtual bool onPullDownRefresh(Pull2RefreshTableView* table) = 0;
+	virtual bool onPullUpRefresh(Pull2RefreshTableView* table) = 0;
 
 	/**
 	* @brief when data returned, call this function to update the view
