@@ -207,9 +207,9 @@ this->addChild(table);
 #联系方式
 ![作者虚拟头像][4]
 
-作者：*Jason Tou*
-邮箱：[*sosoayaen@gmail.com*][3]
-twitter：*sosoayaen*
+作者：*Jason Tou*  
+邮箱：[*sosoayaen@gmail.com*][3]  
+twitter：*sosoayaen*  
 新浪微博：*sosoayaen*
 
 作者公司使用`cocos2dx`作为主要引擎。主要使用`C++`进行开发，也伴有些许的`Lua`脚本。
