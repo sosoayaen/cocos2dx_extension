@@ -158,7 +158,7 @@ public:
 	 * @param pNodeHeader
 	 */
    	void setHeaderNode(cocos2d::CCNode* pNodeHeader);
-   	void setFooterNode(cocos2d::CCNode* pNodeHeader);
+   	void setFooterNode(cocos2d::CCNode* pNodeFooter);
 
 	/**
 	 * @brief update the HEADER NODE's position
