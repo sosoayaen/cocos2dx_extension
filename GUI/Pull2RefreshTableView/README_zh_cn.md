@@ -184,7 +184,7 @@ Pull2RefreshTableview* table = Pull2RefreshTableView::create(
 >在`onPullDownDidScroll`回调中，请不要调用`runAction`或者是增加定时器之类的操作，因为它被触发的频率非常高，可以把它看成是一个判断触点moved的消息回调，只要手指移动了，都会触发，所以当你在屏幕上拉动表格时，会触发很多次`onPullDownDidScroll`。
 
 ##刷新数据
-数据刷新的操作只需要在`Pull2RefreshTableViewDelegate::onPullDownRefresh`和`Pull2RefreshTableViewDelegate::onPullUpRefresh`回调中实现即可。例如，你可以使用`http`请求一些`JSON`数据回来，然后当数据返回后主动调用`Pull2RefreshTableView::onPullDownRefreshComplete`或者`Pull2RefreshTableView::onPullDownRefreshComplete`函数通知表格数据获取接触，刷新表格。
+数据刷新的操作只需要在`Pull2RefreshTableViewDelegate::onPullDownRefresh`和`Pull2RefreshTableViewDelegate::onPullUpRefresh`回调中实现即可。例如，你可以使用`http`请求一些`JSON`数据回来，然后当数据返回后主动调用`Pull2RefreshTableView::onPullDownRefreshComplete`或者`Pull2RefreshTableView::onPullDownRefreshComplete`函数通知表格数据刷新完成，刷新表格。
 
 `Pull2RefreshTableViewDelegate`也提供了一个简单版本的`onPullDownRefreshComplete`和`onPullUpRefreshComplete`，不过都带一个`Pull2RefreshTableView`对象指针参数，也就是说当你做简单调用的时候，只需要把数据刷新回来的对象放到宿主调用的`onPullXXXRefreshComplete(table)`即可。和`CCScrollView`一样，宿主可以同时拥有多个表，所以需要知道你通知数据刷新完成的表是哪个。
 

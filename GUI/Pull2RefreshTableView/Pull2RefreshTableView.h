@@ -15,16 +15,16 @@ public: inline virtual varType get##funcName(){return memberName;}
 
 // status
 enum {
-	kCCPull2RefreshStatusNormal,
-	kCCPull2RefreshStatusPullDownReleaseToRefresh,
-	kCCPull2RefreshStatusPullUpReleaseToRefresh
+	kPull2RefreshStatusNormal,
+	kPull2RefreshStatusPullDownReleaseToRefresh,
+	kPull2RefreshStatusPullUpReleaseToRefresh
 };
 
 // pull type whitch means uesr trigger a pull up or pull down release
 enum {
-	kCCPull2RefreshTypeNone,
-	kCCPull2RefreshTypeUp,
-	kCCPull2RefreshTypeDown
+	kPull2RefreshTypeNone,
+	kPull2RefreshTypeUp,
+	kPull2RefreshTypeDown
 };
 
 class Pull2RefreshTableView;
@@ -149,6 +149,7 @@ public:
 	virtual void setDirection(cocos2d::extension::CCScrollViewDirection eDirection);
 
     virtual bool ccTouchBegan(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEvent);
+    virtual void ccTouchMoved(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEvent);
     virtual void ccTouchCancelled(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEvent);
     virtual void ccTouchEnded(cocos2d::CCTouch *pTouch, cocos2d::CCEvent *pEvent);
 
@@ -170,6 +171,18 @@ public:
 	 * @brief overwirte this method to add HEADER AREA to container
 	 */
 	void setContainer(cocos2d::CCNode* pContainer);
+
+	/**
+	 * @brief lock the table when refresh data
+	 * @param bLock
+	 */
+	void setLockRefreshTable(bool bLock);
+
+	/**
+	 * @brief flag indicate if lock table when refresh data
+	 */
+	bool isLockRefreshTable();
+
 protected:
 	/**
 	* @brief Call it when pull down refresh complete, it will end the animation
@@ -215,6 +228,11 @@ protected:
 	 */
 	cocos2d::CCNode* m_pNodeHeader;
 	cocos2d::CCNode* m_pNodeFooter;
+	
+	/**
+	 * lock table flag
+	 */
+	bool m_bLockTableAtRefreshData;
 };
 
 #endif // __PULL_2_REFRESH_TABLE_VIEW_H__
